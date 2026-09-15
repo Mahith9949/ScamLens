@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>ScamLens AI</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #070a12;
+    color: white;
+}
+
+.container {
+    width: 90%;
+    max-width: 900px;
+    margin: auto;
+    padding: 40px 0;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.logo {
+    font-size: 45px;
+    font-weight: bold;
+}
+
+.logo span {
+    color: #ff3154;
+}
+
+.tagline {
+    color: #aeb5c2;
+    margin-top: 10px;
+}
+
+.card {
+    background: #111722;
+    border: 1px solid #293244;
+    border-radius: 18px;
+    padding: 25px;
+    margin-bottom: 20px;
+}
+
+textarea {
+    width: 100%;
+    height: 180px;
+    background: #080c14;
+    color: white;
+    border: 1px solid #374155;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 16px;
+    resize: vertical;
+}
+
+button {
+    margin-top: 15px;
+    padding: 14px 25px;
+    border: none;
+    border-radius: 10px;
+    background: #ff3154;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.85;
+}
+
+.result {
+    display: none;
+}
+
+.risk-box {
+    text-align: center;
+    padding: 30px;
+    background: #190d13;
+    border: 1px solid #562031;
+    border-radius: 15px;
+}
+
+.score {
+    font-size: 60px;
+    font-weight: bold;
+    color: #ff3154;
+}
+
+.level {
+    font-size: 25px;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+.verdict {
+    margin-top: 10px;
+    color: #c5cad4;
+}
+
+h2 {
+    margin-top: 0;
+}
+
+.indicator {
+    padding: 15px;
+    background: #0c111b;
+    border-left: 4px solid #ff3154;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.indicator strong {
+    color: #ff5472;
+}
+
+.why {
+    padding: 12px;
+    margin: 10px 0;
+    background: #0c111b;
+    border-radius: 8px;
+}
+
+.actions li {
+    margin: 12px 0;
+}
+
+.loading {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    color: #ff5472;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+    <div class="logo">
+        Scam<span>Lens</span>
+    </div>
+
+    <div class="tagline">
+        See the scam before it sees you.
+    </div>
+</header>
+
+
+<!-- INPUT -->
+
+<div class="card">
+
+    <h2>🔎 Investigate a Message</h2>
+
+    <textarea
+        id="message"
+        placeholder="Paste a suspicious SMS, WhatsApp message, email, URL or payment request here..."
+    ></textarea>
+
+    <button onclick="analyze()">
+        🔍 Analyze with ScamLens
+    </button>
+
+</div>
+
+
+<div class="loading" id="loading">
+    🧠 ScamLens is investigating...
+</div>
+
+
+<!-- RESULT -->
+
+<div class="result" id="result">
+
+    <div class="card">
+
+        <div class="risk-box">
+
+            <div class="score" id="score">
+                0/100
+            </div>
+
+            <div class="level" id="level">
+                -
+            </div>
+
+            <div class="verdict" id="verdict">
+                -
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- SUMMARY -->
+
+    <div class="card">
+
+        <h2>🧠 AI Analysis</h2>
+
+        <p id="summary"></p>
+
+    </div>
+
+
+    <!-- WHY -->
+
+    <div class="card">
+
+        <h2>🔎 Show Me Why</h2>
+
+        <div id="why"></div>
+
+    </div>
+
+
+    <!-- INDICATORS -->
+
+    <div class="card">
+
+        <h2>🚨 Suspicious Indicators</h2>
+
+        <div id="indicators"></div>
+
+    </div>
+
+
+    <!-- ACTIONS -->
+
+    <div class="card">
+
+        <h2>🛡️ What You Should Do</h2>
+
+        <ul id="actions" class="actions"></ul>
+
+    </div>
+
+</div>
+
+</div>
+
+
+<script>
+
+function analyze() {
+
+    const message =
+        document.getElementById("message").value
+        .toLowerCase()
+        .trim();
+
+    if (message === "") {
+
+        alert("Please enter a message first.");
+
+        return;
+    }
+
+
+    document.getElementById("loading")
+        .style.display = "block";
+
+    document.getElementById("result")
+        .style.display = "none";
+
+
+    /*
+       Small delay to make the interface
+       feel like an AI investigation.
+    */
+
+    setTimeout(() => {
+
+        const result =
+            detectScam(message);
+
+        showResult(result);
+
+        document.getElementById("loading")
+            .style.display = "none";
+
+        document.getElementById("result")
+            .style.display = "block";
+
+        window.scrollTo({
+            top: document.getElementById("result").offsetTop,
+            behavior: "smooth"
+        });
+
+    }, 1000);
+
+}
+
+
+/* =====================================================
+   SCAM DETECTION ENGINE
+   ===================================================== */
+
+function detectScam(message) {
+
+    let score = 0;
+
+    let indicators = [];
+
+    let why = [];
+
+
+    /* URGENCY */
+
+    const urgencyWords = [
+        "urgent",
+        "immediately",
+        "today",
+        "within 30 minutes",
+        "within 1 hour",
+        "act now",
+        "hurry",
+        "deadline"
+    ];
+
+    if (containsAny(message, urgencyWords)) {
+
+        score += 20;
+
+        indicators.push({
+            title: "Urgency detected",
+            explanation:
+                "The message pressures the recipient to act quickly."
+        });
+
+        why.push(
+            "⚠️ Urgency: The sender is creating pressure to act immediately."
+        );
+    }
+
+
+    /* THREATS */
+
+    const threatWords = [
+        "blocked",
+        "suspended",
+        "closed",
+        "legal action",
+        "arrest",
+        "penalty",
+        "account will be blocked",
+        "account blocked"
+    ];
+
+    if (containsAny(message, threatWords)) {
+
+        score += 20;
+
+        indicators.push({
+            title: "Threat or fear detected",
+            explanation:
+                "The message uses consequences or fear to influence the recipient."
+        });
+
+        why.push(
+            "🚨 Threat: The message uses fear of account suspension, penalties, or consequences."
+        );
+    }
+
+
+    /* OTP */
+
+    const sensitiveWords = [
+        "otp",
+        "password",
+        "pin",
+        "cvv",
+        "card number",
+        "bank details",
+        "verification code"
+    ];
+
+    if (containsAny(message, sensitiveWords)) {
+
+        score += 30;
+
+        indicators.push({
+            title: "Sensitive information request",
+            explanation:
+                "The message appears to request sensitive authentication or financial information."
+        });
+
+        why.push(
+            "🔐 Sensitive information: The message mentions OTP, PIN, password, CVV, or similar credentials."
+        );
+    }
+
+
+    /* MONEY */
+
+    const moneyWords = [
+        "send money",
+        "transfer money",
+        "pay now",
+        "payment",
+        "upi",
+        "refund",
+        "prize",
+        "reward",
+        "cashback",
+        "lottery"
+    ];
+
+    if (containsAny(message, moneyWords)) {
+
+        score += 20;
+
+        indicators.push({
+            title: "Financial activity detected",
+            explanation:
+                "The message contains a payment, transfer, reward, refund, or financial request."
+        });
+
+        why.push(
+            "💰 Financial activity: The message involves money or a financial transaction."
+        );
+    }
+
+
+    /* LINK */
+
+    const urlPattern =
+        /(https?:\/\/|www\.|\.com|\.in|\.net|\.org)/i;
+
+    if (urlPattern.test(message)) {
+
+        score += 15;
+
+        indicators.push({
+            title: "Link detected",
+            explanation:
+                "The message contains a website or URL that should be checked carefully."
+        });
+
+        why.push(
+            "🔗 Link: The message contains a URL. Verify the domain independently before opening it."
+        );
+    }
+
+
+    /* VERIFY */
+
+    const verifyWords = [
+        "verify your account",
+        "verify now",
+        "confirm your account",
+        "update your account",
+        "click here"
+    ];
+
+    if (containsAny(message, verifyWords)) {
+
+        score += 15;
+
+        indicators.push({
+            title: "Account verification request",
+            explanation:
+                "The message asks the recipient to verify or update an account."
+        });
+
+        why.push(
+            "🔍 Verification request: The sender is asking you to verify or update account information."
+        );
+    }
+
+
+    /* IMPERSONATION */
+
+    const organizations = [
+        "sbi",
+        "bank",
+        "paypal",
+        "amazon",
+        "flipkart",
+        "google",
+        "microsoft",
+        "government",
+        "income tax",
+        "courier"
+    ];
+
+    if (containsAny(message, organizations)) {
+
+        score += 10;
+
+        indicators.push({
+            title: "Organization impersonation possibility",
+            explanation:
+                "The message refers to a recognizable organization or service."
+        });
+
+        why.push(
+            "🏢 Identity check: The sender claims or appears to represent an organization. Verify through its official channel."
+        );
+    }
+
+
+    /* CAP SCORE */
+
+    if (score > 100) {
+
+        score = 100;
+
+    }
+
+
+    /* DEFAULT */
+
+    if (indicators.length === 0) {
+
+        score = 10;
+
+        indicators.push({
+            title: "No obvious scam indicators",
+            explanation:
+                "No strong suspicious patterns were detected by this basic analysis."
+        });
+
+        why.push(
+            "✅ No major warning signals were detected."
+        );
+    }
+
+
+    /* LEVEL */
+
+    let level;
+    let verdict;
+
+    if (score >= 75) {
+
+        level = "🔴 CRITICAL RISK";
+
+        verdict =
+            "This message contains several strong scam indicators.";
+
+    }
+
+    else if (score >= 50) {
+
+        level = "🟠 HIGH RISK";
+
+        verdict =
+            "This message contains multiple suspicious indicators.";
+
+    }
+
+    else if (score >= 25) {
+
+        level = "🟡 MEDIUM RISK";
+
+        verdict =
+            "Some suspicious characteristics were detected.";
+
+    }
+
+    else {
+
+        level = "🟢 LOW RISK";
+
+        verdict =
+            "No strong scam indicators were detected.";
+
+    }
+
+
+    /* SUMMARY */
+
+    let summary;
+
+    if (score >= 75) {
+
+        summary =
+            "ScamLens detected multiple high-risk characteristics. Do not click suspicious links or provide passwords, OTPs, PINs, or financial information.";
+
+    }
+
+    else if (score >= 50) {
+
+        summary =
+            "ScamLens found several warning signs. Treat this message carefully and independently verify the sender through an official channel.";
+
+    }
+
+    else if (score >= 25) {
+
+        summary =
+            "ScamLens detected some potentially suspicious characteristics. More verification is recommended before taking action.";
+
+    }
+
+    else {
+
+        summary =
+            "ScamLens did not detect strong scam indicators. However, this does not guarantee that the message is legitimate.";
+
+    }
+
+
+    /* SAFETY ACTIONS */
+
+    let actions = [
+
+        "Do not share OTPs, passwords, PINs, or CVV numbers.",
+
+        "Do not click suspicious links.",
+
+        "Verify the sender using the organization's official website or app.",
+
+        "If money is involved, independently confirm the request before paying."
+
+    ];
+
+
+    return {
+        score,
+        level,
+        verdict,
+        summary,
+        indicators,
+        why,
+        actions
+    };
+
+}
+
+
+/* =====================================================
+   HELPER
+   ===================================================== */
+
+function containsAny(text, words) {
+
+    return words.some(word =>
+        text.includes(word)
+    );
+
+}
+
+
+/* =====================================================
+   DISPLAY RESULT
+   ===================================================== */
+
+function showResult(data) {
+
+    document.getElementById("score")
+        .textContent =
+        data.score + "/100";
+
+
+    document.getElementById("level")
+        .textContent =
+        data.level;
+
+
+    document.getElementById("verdict")
+        .textContent =
+        data.verdict;
+
+
+    document.getElementById("summary")
+        .textContent =
+        data.summary;
+
+
+    /* WHY */
+
+    const whyBox =
+        document.getElementById("why");
+
+    whyBox.innerHTML = "";
+
+    data.why.forEach(item => {
+
+        const div =
+            document.createElement("div");
+
+        div.className = "why";
+
+        div.textContent = item;
+
+        whyBox.appendChild(div);
+
+    });
+
+
+    /* INDICATORS */
+
+    const indicatorBox =
+        document.getElementById("indicators");
+
+    indicatorBox.innerHTML = "";
+
+    data.indicators.forEach(item => {
+
+        const div =
+            document.createElement("div");
+
+        div.className = "indicator";
+
+        div.innerHTML = `
+            <strong>
+                🚨 ${item.title}
+            </strong>
+
+            <p>
+                ${item.explanation}
+            </p>
+        `;
+
+        indicatorBox.appendChild(div);
+
+    });
+
+
+    /* ACTIONS */
+
+    const actionBox =
+        document.getElementById("actions");
+
+    actionBox.innerHTML = "";
+
+    data.actions.forEach(action => {
+
+        const li =
+            document.createElement("li");
+
+        li.textContent = action;
+
+        actionBox.appendChild(li);
+
+    });
+
+}
+
+</script>
+
+</body>
+</html>
